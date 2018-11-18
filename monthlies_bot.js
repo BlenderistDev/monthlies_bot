@@ -1,11 +1,20 @@
 const fs = require("fs");
-const Telegraf = require('telegraf');
-const Telegram = require('telegraf/telegram');
+const Telegram = require('node-telegram-bot-api');
+const Agent = require('socks5-https-client/lib/Agent')
 const TELEGRAM_API_TOKEN = "601839852:AAG6x8uOiLHYD_j6br_I8OuhKLlX8Yt9Cww";
-const telegram = new Telegram(TELEGRAM_API_TOKEN);
-const bot = new Telegraf(TELEGRAM_API_TOKEN, {
-	polling: true
+const bot = new Telegram(TELEGRAM_API_TOKEN, {
+	polling: true,
+	request: {
+		agentClass: Agent,
+		agentOptions: {
+			socksHost: 'hvkun.teletype.live',
+      socksPort: 1080,
+			socksUsername: 'telegram',
+			socksPassword: 'telegram'
+		}
+	}
 })
+
 
 class UserObject{
 	constructor(){
@@ -41,19 +50,19 @@ class UserObject{
 		if ( ( (this.mes.length == 0) || (this.timeAfterLastMes() >= betweenMes) ) && ( (this.timeAfterLastMsg() >= (betweenMsg) ) || (this.lastmsg == null) ) && (this.time == (new Date()).getHours()) ){
 			console.log((new Date).getHours(), this.time);
 			console.log("start question user "+this.id)
-			telegram.sendMessage(this.id, 'Месячные начались?', optionsStart);
+			bot.sendMessage(this.id, 'Месячные начались?', optionsStart);
 			this.lastmsg = new Date();
 			this.savetoFile();
 		}	
 		if (this.mes.length!=0 && this.mes[this.mes.length-1].end==null && (this.timeAfterLastMes() >= betweenStartEnd) && (this.timeAfterLastMsg()>=betweenMsg) && (this.time == (new Date()).getHours())){
 			console.log("end question user "+this.id)
-			telegram.sendMessage(this.id, 'Месячные закончились?', optionsEnd);
+			bot.sendMessage(this.id, 'Месячные закончились?', optionsEnd);
 			this.lastmsg = new Date();
 			this.savetoFile();
 		}	
 		if (this.mes.length!=0 &&  (this.timeAfterLastMes() >= betweenStartPain) && (this.timeAfterLastMes() <= betweenStartEnd) && (this.timeAfterLastMsg()>=betweenMsg) && (this.time == (new Date()).getHours())){
 			console.log("first pain question user "+this.id)
-			telegram.sendMessage(this.id, 'Оцени уровень боли', optionsFirstPain);
+			bot.sendMessage(this.id, 'Оцени уровень боли', optionsFirstPain);
 			this.lastmsg = new Date();
 			this.savetoFile();
 		}
@@ -96,7 +105,7 @@ class UserObject{
 	mesEnd(){
 		this.mes[this.mes.length-1].end = new Date();
 		this.savetoFile();
-		telegram.sendMessage(this.id,"Оцени уровень боли:",optionsSecondPain);
+		bot.sendMessage(this.id,"Оцени уровень боли:",optionsSecondPain);
 	}
 	static painToRussian(pain){
 		switch (pain){
@@ -124,7 +133,6 @@ class UserObject{
 			this.mes[this.mes.length-1].firstpain="low";
 		}
 		this.savetoFile();
-
 	}
 	secondPain(answer){
 		if (/high/.test(answer)){
@@ -145,7 +153,7 @@ class UserObject{
 		var str ="";
 		if (this.mes.length==0){
 			console.log("history not found for user "+this.id)
-			telegram.sendMessage(this.id,"история не найдена");
+			bot.sendMessage(this.id,"история не найдена");
 			return;
 		}
 		this.mes.forEach(function(element){
@@ -153,20 +161,20 @@ class UserObject{
 			str += element.toString();
 		});
 		console.log("sending history for user "+this.id);
-		telegram.sendMessage(this.id,str);
+		bot.sendMessage(this.id,str);
 	}
 	static checkTimeCorrect(msg){
-    var hour = msg.message.text;
+    var hour = msg.text;
 		if (/\D+/.test(hour)){
-			telegram.sendMessage(msg.from.id,"Это не цифра");
+			bot.sendMessage(msg.from.id,"Это не цифра");
 			return false;
 		}
 		if(hour>23){
-			telegram.sendMessage(msg.from.id,"В сутках всего 24 часа!")
+			bot.sendMessage(msg.from.id,"В сутках всего 24 часа!")
 			return false;
 		}
 		if(hour<0){
-			telegram.sendMessage(msg.from.id,"некорректное время!")
+			bot.sendMessage(msg.from.id,"некорректное время!")
 			return false;
 		}
 		return true;
@@ -175,11 +183,10 @@ class UserObject{
 		this.lastcommand=null;
 		this.time = time;
 		this.savetoFile();
-		telegram.sendMessage(this.id,"Время сообщений  изменено на "+time)
+	  bot.sendMessage(this.id,"Время сообщений  изменено на "+time)
 	}
  
 }
-
 class Monthlies{
 	constructor(){
 		this.start = new Date();
@@ -205,49 +212,45 @@ class Monthlies{
 	}
 }
 botStart = function(msg){
-  var id = msg.from.id;
+
+}
+bot.onText(/\/start/,function(msg){
+	var id = msg.from.id;
 	console.log("user "+id+" starts bot")
   fs.readdir("data",function(error,array){
 	if (error)
 	  throw error;
 	if (array.includes(id+".json")==false){
-    var obj = {id:id, time:new Date().getHours(),lastmsg:null,lastcommand:null, mes:[]};
-	  fs.writeFile("data/"+id+".json",JSON.stringify(obj),'utf8', function(){});
+    var obj = new UserObject;
+	  obj.savetoFile();
 	  console.log("file for user "+id+" created")
   }
   else 
 	  console.log("file for user "+id+" found")
   });
-}
-bot.start(botStart);
-bot.command("history",function(msg){
+});
+bot.onText(/\/history/,function(msg){
 	UserObject.readJsonFile(msg.from.id).then((obj)=>{obj.tableCreate()})
 });
-
-bot.command("time",function(msg){
+bot.onText(/\/time/,function(msg){
 	UserObject.readJsonFile(msg.from.id).then(function(data){
 		var id = data.id;
 		data.lastcommand = "time";
 		data.savetoFile();
-		telegram.sendMessage(data.id,"В котором часу тебе будет удобно получать сообщения? Отправь цифру, например 18.");
+		bot.sendMessage(data.id,"В котором часу тебе будет удобно получать сообщения? Отправь цифру, например 18.");
 		setTimeout(function(){
       UserObject.readJsonFile(id).then(function(data){
 				if (data.lastcommand=="time"){
 					data.lastcommand = "null";
 					data.savetoFile();
-					telegram.sendMessage(data.id,"Ты так и не прислала время. Если решишь изменить время сообщений, воспользуйся командой.");
+					bot.sendMessage(data.id,"Ты так и не прислала время. Если решишь изменить время сообщений, воспользуйся командой.");
 				}
 			})
 
 		},1000*60*5);
 	})
 });
-
-
-bot.startPolling();
-
 setInterval(UserObject.check_notifications,5000);
-
 var optionsStart = {
 	reply_markup: JSON.stringify({
 	  inline_keyboard: [
@@ -264,7 +267,6 @@ var optionsEnd = {
 	  ]
 	})
 };
-	
 var optionsFirstPain = {
 	reply_markup: JSON.stringify({
 	  inline_keyboard: [
@@ -274,7 +276,6 @@ var optionsFirstPain = {
 	  ]
 	})
 };
-
 var optionsSecondPain = {
 	reply_markup: JSON.stringify({
 	  inline_keyboard: [
@@ -284,38 +285,38 @@ var optionsSecondPain = {
 	  ]
 	})
 };
-
 bot.on('text',function(msg){
+	if (/\//.test(msg.text))
+    return;
 	UserObject.readJsonFile(msg.chat.id).then(function(obj){
 		if (obj.lastcommand == "time" && UserObject.checkTimeCorrect(msg))
-		  obj.addTime(msg.message.text);
+		  obj.addTime(msg.text);
 	})
 });
 bot.on('callback_query', function(msg){
-	var answer = msg.callbackQuery.data;
-	console.log(answer)
+	var answer = msg.data;
 	if (answer == "mes_start"){
 		var monthlies = new Monthlies;
 		monthlies.addMonthlies(msg.from.id);
-		telegram.sendMessage(msg.from.id,"Записал!");
+		bot.sendMessage(msg.from.id,"Записал!");
 		return;
 	}
 	if (answer == "mes_end"){
     UserObject.readJsonFile(msg.from.id).then(function(obj){
-			telegram.sendMessage(msg.from.id,"Записал!");
+			bot.sendMessage(msg.from.id,"Записал!");
 			obj.mesEnd();
 		})
 	}
 	if (/first_pain/.test(answer)){
 		UserObject.readJsonFile(msg.from.id).then(function(obj){
-			telegram.sendMessage(msg.from.id,"Записал!");
+			bot.sendMessage(msg.from.id,"Записал!");
 			obj.firstPain(answer);
 		})
 
 	}
 	if (/second_pain/.test(answer)){
 		UserObject.readJsonFile(msg.from.id).then(function(obj){
-			telegram.sendMessage(msg.from.id,"Записал!");
+			bot.sendMessage(msg.from.id,"Записал!");
 			obj.secondPain(answer);
 		})
  }
