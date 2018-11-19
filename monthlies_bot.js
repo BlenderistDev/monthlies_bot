@@ -14,8 +14,6 @@ const bot = new Telegram(TELEGRAM_API_TOKEN, {
 		}
 	}
 })
-
-
 class UserObject{
 	constructor(){
 		this.id = undefined;
@@ -43,10 +41,10 @@ class UserObject{
 		return (new Date() -  new Date(this.lastmsg))
 	}
 	checkIfNotifiationNeed(){
-		var betweenMsg = 1000*60//1000*60*60*24;
-		var betweenMes = 1000*60*3 //1000*60*60*24*28;
-		var betweenStartEnd = 1000*60*2//1000*60*60*24*3;
-		var betweenStartPain =1000*60*1//1000*60*60*24*1;
+		var betweenMsg = 1000*60*60*24;
+		var betweenMes = 1000*60*60*24*28;
+		var betweenStartEnd = 1000*60*60*24*3;
+		var betweenStartPain =1000*60*60*24*1;
 		if ( ( (this.mes.length == 0) || (this.timeAfterLastMes() >= betweenMes) ) && ( (this.timeAfterLastMsg() >= (betweenMsg) ) || (this.lastmsg == null) ) && (this.time == (new Date()).getHours()) ){
 			console.log((new Date).getHours(), this.time);
 			console.log("start question user "+this.id)
@@ -211,9 +209,6 @@ class Monthlies{
 		return str;
 	}
 }
-botStart = function(msg){
-
-}
 bot.onText(/\/start/,function(msg){
 	var id = msg.from.id;
 	console.log("user "+id+" starts bot")
@@ -221,7 +216,8 @@ bot.onText(/\/start/,function(msg){
 	if (error)
 	  throw error;
 	if (array.includes(id+".json")==false){
-    var obj = new UserObject;
+		var obj = new UserObject;
+		obj.id = id;
 	  obj.savetoFile();
 	  console.log("file for user "+id+" created")
   }
@@ -321,3 +317,15 @@ bot.on('callback_query', function(msg){
 		})
  }
 });
+function checkDataFolder(){
+  fs.readdir("data",function(err,data){
+  if (err){
+    console.log('no data directory');
+    fs.mkdir("data/",(err)=>{
+      if (err)
+       console.error("error with creating data directory "+err);
+    });
+  }
+  })
+}
+checkDataFolder();
