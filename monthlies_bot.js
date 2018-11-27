@@ -303,6 +303,12 @@ bot.on('callback_query', function(msg){
 			obj.mesEnd();
 		})
 	}
+	if (answer == "mes_not_start"){
+		bot.sendMessage(msg.from.id,"Записал! Спрошу завтра!");
+	}
+	if (answer == "mes_not_end"){
+		bot.sendMessage(msg.from.id,"Записал! Спрошу завтра!");
+	}
 	if (/first_pain/.test(answer)){
 		UserObject.readJsonFile(msg.from.id).then(function(obj){
 			bot.sendMessage(msg.from.id,"Записал!");
