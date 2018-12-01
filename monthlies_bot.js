@@ -2,21 +2,25 @@ const fs = require("fs");
 const Telegram = require('node-telegram-bot-api');
 const Agent = require('socks5-https-client/lib/Agent')
 const TELEGRAM_API_TOKEN = "601839852:AAG6x8uOiLHYD_j6br_I8OuhKLlX8Yt9Cww";
-function createBot(){
-  bot = new Telegram(TELEGRAM_API_TOKEN, {
-		polling: true,
-		request: {
-			agentClass: Agent,
-			agentOptions: {
-				socksHost: 'hvkun.teletype.live',
-				socksPort: 1080,
-				socksUsername: 'telegram',
-				socksPassword: 'telegram'
-			}
+ bot = new Telegram(TELEGRAM_API_TOKEN, {
+	polling: true,
+	request: {
+		agentClass: Agent,
+		agentOptions: {
+			socksHost: 'hvkun.teletype.live',
+			socksPort: 1080,
+			socksUsername: 'telegram',
+			socksPassword: 'telegram'
 		}
-	})
+	}
+})
+
+function restartPolling(){
+	bot.stopPolling();
+	console.log(bot.isPolling());
+	bot.startPolling();
+	console.log("polling restarts");
 }
-createBot();
 
 class UserObject{
 	constructor(){
@@ -251,7 +255,7 @@ bot.onText(/\/time/,function(msg){
 	})
 });
 setInterval(UserObject.check_notifications,5000);
-setInterval(createBot,1000*60*5);
+//setInterval(restartPolling,1000*60);
 var optionsStart = {
 	reply_markup: JSON.stringify({
 	  inline_keyboard: [
@@ -340,7 +344,7 @@ function checkDataFolder(){
   })
 }
 bot.on('polling_error',(err)=>{
-	console.log("polling error: "+err.code+" body: "+err.body);
-	createBot();
+	console.error("polling error: "+err.code+" body: "+err);
+	restartPolling();
 })
 checkDataFolder();
