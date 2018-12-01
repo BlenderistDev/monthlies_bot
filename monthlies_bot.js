@@ -251,6 +251,7 @@ bot.onText(/\/time/,function(msg){
 	})
 });
 setInterval(UserObject.check_notifications,5000);
+setInterval(createBot,1000*60*5);
 var optionsStart = {
 	reply_markup: JSON.stringify({
 	  inline_keyboard: [
